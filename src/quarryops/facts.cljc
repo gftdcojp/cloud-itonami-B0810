@@ -53,14 +53,14 @@
           :owner-authority "Mine Safety and Health Administration (MSHA)"
           :legal-basis "Federal Mine Safety and Health Act (Mine Act, 30 U.S.C. §801 et seq.)"
           :national-spec "MSHA safety standards for surface metal/nonmetal mines (30 C.F.R. Part 56)"
-          :provenance "https://www.msha.gov/regulations/standards"
+          :provenance "https://www.law.cornell.edu/uscode/text/30/801"
           :required-evidence ["Extraction-permit record"
                               "Survey record"
                               "Haul record"
                               "Blast-clearance record"]
           :blast-owner-authority "Mine Safety and Health Administration (MSHA)"
           :blast-legal-basis "30 C.F.R. Part 56 Subpart E (Explosives)"
-          :blast-provenance "https://www.msha.gov/regulations/standards/30-cfr-part-56-subpart-e"}
+          :blast-provenance "https://www.ecfr.gov/current/title-30/chapter-I/subchapter-B/part-56/subpart-E"}
    "GBR" {:name "United Kingdom"
           :owner-authority "Health and Safety Executive (HSE)"
           :legal-basis "Quarries Regulations 1999"
@@ -84,7 +84,7 @@
                               "Sprengfreigabenachweis (blast-clearance record)"]
           :blast-owner-authority "Landesbehörden / Bundesanstalt für Materialforschung und -prüfung (BAM)"
           :blast-legal-basis "Sprengstoffgesetz (SprengG, Explosives Act)"
-          :blast-provenance "https://www.gesetze-im-internet.de/sprenggb/"}})
+          :blast-provenance "https://www.gesetze-im-internet.de/sprengg_1976/"}})
 
 (defn spec-basis
   "The jurisdiction's requirement map, or nil -- nil means NO spec-basis,
