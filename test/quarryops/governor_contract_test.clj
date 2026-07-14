@@ -37,11 +37,14 @@
 (defn- simulate-robotics!
   "Walks `subject` through the robot bench-face/quarry-face
   verification mission -> approve, leaving `:robotics-sim-verified?`
-  on file. Only meaningful to call for an extraction whose face-
-  boundary-deviation is actually within tolerance -- an out-of-
-  tolerance extraction still gets :robotics-sim-verified? recorded
-  (per whatever the mission itself found), but `quarryops.governor`'s
-  independent recheck HARD-holds regardless (see
+  on file. This now ACTUALLY runs the real `physics-2d`-backed bench-
+  face loose-block free-fall/settling simulation for the extraction's
+  own :fragment-mass-kg/:bench-drop-height-m (ADR-2607152000) -- only
+  meaningful to call for an extraction whose real simulated settling
+  telemetry is actually within tolerance -- an out-of-tolerance
+  extraction still gets :robotics-sim-verified? recorded (per whatever
+  the mission itself found), but `quarryops.governor`'s independent
+  recheck HARD-holds regardless (see
   `robotics-simulation-out-of-tolerance-is-held`)."
   [actor tid-prefix subject]
   (exec-op actor (str tid-prefix "-robotics") {:op :robotics/simulate-quarry-face-verification :subject subject} operator)
@@ -185,7 +188,7 @@
       (is (empty? (store/extraction-history db))))))
 
 (deftest robotics-simulation-out-of-tolerance-is-held
-  (testing "extraction-7 has a robotics-sim already on file, but its own face-boundary-deviation reading falls outside its own tolerance bounds on INDEPENDENT recheck -> HOLD, never trusts the on-file verdict alone"
+  (testing "extraction-7 has a robotics-sim already on file, but its own REAL physics-2d-simulated bench-face settling telemetry (:sim-settling-distance-m/:sim-impact-energy-j -- ADR-2607152000) falls outside the real tolerance band on INDEPENDENT recheck -> HOLD, never trusts the on-file verdict alone. extraction-7's loose block is deliberately surveyed at 14.0m in the demo fixture (quarryops.store/demo-data) -- higher than its own catch bench's 10.0m rated containment height, a genuine design-record inconsistency (the same 'deliberately misconfigured fixture' technique automotive.store/demo-data uses for its own vehicle-5) -- which the real, re-run simulation catches."
     (let [[db actor] (fresh)
           _ (assess! actor "t14pre" "extraction-7")
           res (exec-op actor "t14" {:op :extraction/extract :subject "extraction-7"} operator)]

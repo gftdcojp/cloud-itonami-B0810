@@ -49,10 +49,17 @@
                                        (`:robotics-sim-verified?`)?
                                        AND INDEPENDENTLY recompute
                                        whether the extraction's own
-                                       recorded face-boundary-
-                                       deviation reading falls out of
-                                       its own recorded tolerance
-                                       bounds (`quarryops.robotics/
+                                       recorded REAL `physics-2d`-
+                                       simulated bench-face loose-
+                                       block settling telemetry
+                                       (`:sim-settling-distance-m`/
+                                       `:sim-impact-energy-j`, ADR-
+                                       2607152000) falls outside a
+                                       real tolerance band derived
+                                       from this site's own recorded
+                                       `:catch-bench-rated-height-m`
+                                       design rating
+                                       (`quarryops.robotics/
                                        simulation-out-of-tolerance?`),
                                        ignoring whatever :passed?
                                        verdict the mission run itself
@@ -224,11 +231,13 @@
   "For `:extraction/extract`: HARD hold if the robot bench-face/
   quarry-face verification mission (`quarryops.robotics`) never ran
   and was recorded on the extraction (`:robotics-sim-verified?`), OR
-  if it did but an INDEPENDENT recompute of the extraction's own
-  face-boundary-deviation fields (`quarryops.robotics/simulation-out-
-  of-tolerance?`) says out-of-tolerance right now -- never trusts the
-  mission's own stored :passed? verdict alone, the same discipline
-  `royalty-mismatch-violations` below uses for royalty."
+  if it did but an INDEPENDENT recompute of the extraction's own REAL
+  `physics-2d`-simulated bench-face settling telemetry (`:sim-
+  settling-distance-m`/`:sim-impact-energy-j`, ADR-2607152000 --
+  `quarryops.robotics/simulation-out-of-tolerance?`) says out-of-
+  tolerance right now -- never trusts the mission's own stored
+  :passed? verdict alone, the same discipline `royalty-mismatch-
+  violations` below uses for royalty."
   [{:keys [op subject]} st]
   (when (= op :extraction/extract)
     (let [e (store/extraction st subject)]
@@ -239,9 +248,9 @@
 
         (robotics/simulation-out-of-tolerance? e)
         [{:rule :robotics-simulation-out-of-tolerance
-          :detail (str subject " の切羽境界偏差実測値("
-                       (:face-deviation-actual e) ")が独立再検証で許容範囲["
-                       (:face-deviation-min e) "," (:face-deviation-max e) "]を逸脱")}]))))
+          :detail (str subject " の実測落石沈降距離(" (:sim-settling-distance-m e)
+                       "m)/衝突エネルギー(" (:sim-impact-energy-j e)
+                       "J)が独立再検証でキャッチベンチ定格(" (:catch-bench-rated-height-m e) "m)の許容範囲を逸脱")}]))))
 
 (defn- royalty-mismatch-violations
   "For `:extraction/extract`, INDEPENDENTLY recompute whether the

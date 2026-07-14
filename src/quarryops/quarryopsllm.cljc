@@ -78,27 +78,35 @@
 
 (defn- simulate-quarry-face-verification
   "Runs the robot bench-face/quarry-face verification mission
-  (`quarryops.robotics`) and drafts its result as a proposal. High
+  (`quarryops.robotics`) and drafts its result as a proposal. This now
+  ACTUALLY runs a real `physics-2d`-stepped bench-face loose-block
+  free-fall/settling simulation (ADR-2607152000, see `quarryops.
+  robotics/simulate-quarry-face-verification`'s docstring). High
   confidence -- the mission itself is deterministic simulated
-  telemetry derived from the extraction's own recorded face-
-  deviation fields, not an LLM guess; the Quarry Governor still
-  independently re-derives :passed? from those same fields before any
-  `:actuation/extract-material` proposal may commit -- see
-  `quarryops.governor`'s `robotics-simulation-violations`."
+  telemetry derived from the extraction's own recorded `:fragment-
+  mass-kg`/`:bench-drop-height-m` fields (never an LLM guess); the
+  Quarry Governor still independently re-derives :passed? from the
+  real telemetry fields this drafts before any `:actuation/extract-
+  material` proposal may commit -- see `quarryops.governor`'s
+  `robotics-simulation-violations`."
   [db {:keys [subject]}]
   (let [e (store/extraction db subject)]
     (if (nil? e)
       {:summary "対象採掘記録が見つかりません" :rationale "no extraction record"
        :cites [] :effect :extraction/upsert :value {:id subject :robotics-sim-verified? false}
        :stake nil :confidence 0.0}
-      (let [{:keys [mission actions passed?]} (robotics/simulate-quarry-face-verification subject e)]
+      (let [{:keys [mission actions passed? sim-settling-distance-m sim-impact-energy-j]}
+            (robotics/simulate-quarry-face-verification subject e)]
         {:summary    (str subject ": ベンチフェイス/採石場面検証ロボットミッション " (if passed? "合格" "不合格"))
          :rationale  (str "mission=" (:mission/id mission) " actions=" (count actions)
-                          " face-deviation-actual=" (:face-deviation-actual e))
+                          " sim-settling-distance-m=" sim-settling-distance-m
+                          " sim-impact-energy-j=" sim-impact-energy-j)
          :cites      [(:mission/id mission)]
          :effect     :extraction/upsert
          :value      {:id subject
                       :robotics-sim-verified? passed?
+                      :sim-settling-distance-m sim-settling-distance-m
+                      :sim-impact-energy-j sim-impact-energy-j
                       :robotics-sim-record {:mission-id (:mission/id mission)
                                             :actions (mapv #(dissoc % :action) actions)
                                             :passed? passed?}}

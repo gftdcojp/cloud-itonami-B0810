@@ -34,6 +34,7 @@
   (:require #?(:clj  [clojure.edn :as edn]
                :cljs [cljs.reader :as edn])
             [quarryops.registry :as registry]
+            [quarryops.robotics :as robotics]
             [langchain.db :as d]))
 
 (defprotocol Store
@@ -53,68 +54,101 @@
 
 ;; ----------------------------- demo data -----------------------------
 
+(defn- with-settling-telemetry
+  "Merges REAL bench-face settling telemetry onto a demo extraction's
+  base fields -- `quarryops.robotics/bench-face-settling-telemetry-for`
+  actually runs the `physics-2d`-stepped free-fall/settling simulation
+  for this extraction's own `:fragment-mass-kg`/`:bench-drop-height-m`
+  (ADR-2607152000), so even the 'already on file' seed data (as if
+  from an earlier real robot-survey mission) is genuinely simulation-
+  derived, never hand-typed doubles."
+  [base]
+  (merge base (select-keys (robotics/bench-face-settling-telemetry-for base)
+                           [:sim-settling-distance-m :sim-impact-energy-j
+                            :sim-impact-velocity-mps])))
+
 (defn demo-data
   "A small, self-contained extraction set covering both actuation
   lifecycles (extraction, shipment) plus the governor's own new
-  checks, so the actor + tests run offline."
+  checks, so the actor + tests run offline. `:fragment-mass-kg`/
+  `:bench-drop-height-m`/`:catch-bench-rated-height-m`
+  (ADR-2607152000) are permanent extraction-design fields (like
+  `:claimed-royalty`); `:sim-settling-distance-m`/`:sim-impact-
+  energy-j` are the REAL `quarryops.robotics`-computed physics-2d
+  telemetry for those fields (`with-settling-telemetry`), the ground
+  truth `quarryops.robotics/simulation-out-of-tolerance?`
+  independently rechecks. extraction-7's loose block is genuinely
+  surveyed HIGHER on the face (14.0m) than its own catch bench's
+  rated containment height (10.0m) -- a genuine design-record
+  inconsistency (the bench below was never engineered to catch a
+  fall from that height) that the real, re-run simulation catches on
+  independent recheck even though `:robotics-sim-verified?` was
+  seeded `true` (\"already on file\", i.e. someone/something marked it
+  passed without this real check ever having run) -- the quarry-face
+  analog of extraction-1..6's genuinely-consistent drop-height/
+  catch-bench-rating combinations, which all clear the real tolerance
+  band with margin (see `quarryops.robotics/catch-bench-energy-
+  budget-j`)."
   []
   {:extractions
-   {"extraction-1" {:id "extraction-1" :site "North Face" :material-type :aggregate
-                     :permit-id "PERMIT-001" :permit-valid? true
-                     :involves-blasting? false :blast-clearance-confirmed? false
-                     :quantity 100 :royalty-rate 2.0 :claimed-royalty 200.0
-                     :face-deviation-actual 0.02 :face-deviation-min -0.05 :face-deviation-max 0.05
-                     :robotics-sim-verified? false :robotics-sim-record nil
-                     :extracted? false :shipped? false
-                     :jurisdiction "JPN" :status :intake}
-    "extraction-2" {:id "extraction-2" :site "Atlantis Face" :material-type :aggregate
-                     :permit-id "PERMIT-ATL" :permit-valid? true
-                     :involves-blasting? false :blast-clearance-confirmed? false
-                     :quantity 50 :royalty-rate 3.0 :claimed-royalty 150.0
-                     :face-deviation-actual 0.02 :face-deviation-min -0.05 :face-deviation-max 0.05
-                     :robotics-sim-verified? false :robotics-sim-record nil
-                     :extracted? false :shipped? false
-                     :jurisdiction "ATL" :status :intake}
-    "extraction-3" {:id "extraction-3" :site "South Face" :material-type :dimension-stone
-                     :permit-id "PERMIT-003" :permit-valid? true
-                     :involves-blasting? false :blast-clearance-confirmed? false
-                     :quantity 20 :royalty-rate 5.0 :claimed-royalty 150.0
-                     :face-deviation-actual 0.02 :face-deviation-min -0.05 :face-deviation-max 0.05
-                     :robotics-sim-verified? false :robotics-sim-record nil
-                     :extracted? false :shipped? false
-                     :jurisdiction "JPN" :status :intake}
-    "extraction-4" {:id "extraction-4" :site "East Face" :material-type :aggregate
-                     :permit-id "PERMIT-004" :permit-valid? false
-                     :involves-blasting? false :blast-clearance-confirmed? false
-                     :quantity 80 :royalty-rate 2.0 :claimed-royalty 160.0
-                     :face-deviation-actual 0.02 :face-deviation-min -0.05 :face-deviation-max 0.05
-                     :robotics-sim-verified? false :robotics-sim-record nil
-                     :extracted? false :shipped? false
-                     :jurisdiction "JPN" :status :intake}
-    "extraction-5" {:id "extraction-5" :site "West Face" :material-type :aggregate
-                     :permit-id "PERMIT-005" :permit-valid? true
-                     :involves-blasting? true :blast-clearance-confirmed? false
-                     :quantity 200 :royalty-rate 2.0 :claimed-royalty 400.0
-                     :face-deviation-actual 0.02 :face-deviation-min -0.05 :face-deviation-max 0.05
-                     :robotics-sim-verified? false :robotics-sim-record nil
-                     :extracted? false :shipped? false
-                     :jurisdiction "JPN" :status :intake}
-    "extraction-6" {:id "extraction-6" :site "Central Face" :material-type :aggregate
-                     :permit-id "PERMIT-006" :permit-valid? true
-                     :involves-blasting? true :blast-clearance-confirmed? true
-                     :quantity 150 :royalty-rate 2.0 :claimed-royalty 300.0
-                     :face-deviation-actual 0.02 :face-deviation-min -0.05 :face-deviation-max 0.05
-                     :robotics-sim-verified? false :robotics-sim-record nil
-                     :extracted? false :shipped? false
-                     :jurisdiction "JPN" :status :intake}
-    "extraction-7" {:id "extraction-7" :site "Quarry Face 7" :material-type :aggregate
-                     :permit-id "PERMIT-007" :permit-valid? true
-                     :involves-blasting? false :blast-clearance-confirmed? false
-                     :quantity 100 :royalty-rate 2.0 :claimed-royalty 200.0
-                     :face-deviation-actual 0.30 :face-deviation-min -0.05 :face-deviation-max 0.05
-                     :robotics-sim-verified? true :robotics-sim-record nil
-                     :extracted? false :shipped? false
-                     :jurisdiction "JPN" :status :intake}}})
+   (into {}
+         (map (fn [v] [(:id v) (with-settling-telemetry v)]))
+         [{:id "extraction-1" :site "North Face" :material-type :aggregate
+           :permit-id "PERMIT-001" :permit-valid? true
+           :involves-blasting? false :blast-clearance-confirmed? false
+           :quantity 100 :royalty-rate 2.0 :claimed-royalty 200.0
+           :fragment-mass-kg 180.0 :bench-drop-height-m 4.0 :catch-bench-rated-height-m 10.0
+           :robotics-sim-verified? false :robotics-sim-record nil
+           :extracted? false :shipped? false
+           :jurisdiction "JPN" :status :intake}
+          {:id "extraction-2" :site "Atlantis Face" :material-type :aggregate
+           :permit-id "PERMIT-ATL" :permit-valid? true
+           :involves-blasting? false :blast-clearance-confirmed? false
+           :quantity 50 :royalty-rate 3.0 :claimed-royalty 150.0
+           :fragment-mass-kg 220.0 :bench-drop-height-m 5.0 :catch-bench-rated-height-m 10.0
+           :robotics-sim-verified? false :robotics-sim-record nil
+           :extracted? false :shipped? false
+           :jurisdiction "ATL" :status :intake}
+          {:id "extraction-3" :site "South Face" :material-type :dimension-stone
+           :permit-id "PERMIT-003" :permit-valid? true
+           :involves-blasting? false :blast-clearance-confirmed? false
+           :quantity 20 :royalty-rate 5.0 :claimed-royalty 150.0
+           :fragment-mass-kg 95.0 :bench-drop-height-m 3.0 :catch-bench-rated-height-m 10.0
+           :robotics-sim-verified? false :robotics-sim-record nil
+           :extracted? false :shipped? false
+           :jurisdiction "JPN" :status :intake}
+          {:id "extraction-4" :site "East Face" :material-type :aggregate
+           :permit-id "PERMIT-004" :permit-valid? false
+           :involves-blasting? false :blast-clearance-confirmed? false
+           :quantity 80 :royalty-rate 2.0 :claimed-royalty 160.0
+           :fragment-mass-kg 150.0 :bench-drop-height-m 4.0 :catch-bench-rated-height-m 10.0
+           :robotics-sim-verified? false :robotics-sim-record nil
+           :extracted? false :shipped? false
+           :jurisdiction "JPN" :status :intake}
+          {:id "extraction-5" :site "West Face" :material-type :aggregate
+           :permit-id "PERMIT-005" :permit-valid? true
+           :involves-blasting? true :blast-clearance-confirmed? false
+           :quantity 200 :royalty-rate 2.0 :claimed-royalty 400.0
+           :fragment-mass-kg 300.0 :bench-drop-height-m 6.0 :catch-bench-rated-height-m 10.0
+           :robotics-sim-verified? false :robotics-sim-record nil
+           :extracted? false :shipped? false
+           :jurisdiction "JPN" :status :intake}
+          {:id "extraction-6" :site "Central Face" :material-type :aggregate
+           :permit-id "PERMIT-006" :permit-valid? true
+           :involves-blasting? true :blast-clearance-confirmed? true
+           :quantity 150 :royalty-rate 2.0 :claimed-royalty 300.0
+           :fragment-mass-kg 260.0 :bench-drop-height-m 5.0 :catch-bench-rated-height-m 10.0
+           :robotics-sim-verified? false :robotics-sim-record nil
+           :extracted? false :shipped? false
+           :jurisdiction "JPN" :status :intake}
+          {:id "extraction-7" :site "Quarry Face 7" :material-type :aggregate
+           :permit-id "PERMIT-007" :permit-valid? true
+           :involves-blasting? false :blast-clearance-confirmed? false
+           :quantity 100 :royalty-rate 2.0 :claimed-royalty 200.0
+           :fragment-mass-kg 340.0 :bench-drop-height-m 14.0 :catch-bench-rated-height-m 10.0
+           :robotics-sim-verified? true :robotics-sim-record nil
+           :extracted? false :shipped? false
+           :jurisdiction "JPN" :status :intake}])})
 
 ;; ----------------------------- shared commit logic -----------------------------
 
@@ -223,7 +257,8 @@
 (defn- extraction->tx [{:keys [id site material-type permit-id permit-valid?
                               involves-blasting? blast-clearance-confirmed?
                               quantity royalty-rate claimed-royalty
-                              face-deviation-actual face-deviation-min face-deviation-max
+                              fragment-mass-kg bench-drop-height-m catch-bench-rated-height-m
+                              sim-settling-distance-m sim-impact-energy-j sim-impact-velocity-mps
                               robotics-sim-verified? robotics-sim-record
                               extracted? shipped?
                               jurisdiction status extraction-number shipment-number]}]
@@ -237,23 +272,27 @@
     quantity                                                  (assoc :extraction/quantity quantity)
     royalty-rate                                                (assoc :extraction/royalty-rate royalty-rate)
     claimed-royalty                                               (assoc :extraction/claimed-royalty claimed-royalty)
-    face-deviation-actual                                           (assoc :extraction/face-deviation-actual face-deviation-actual)
-    face-deviation-min                                                (assoc :extraction/face-deviation-min face-deviation-min)
-    face-deviation-max                                                  (assoc :extraction/face-deviation-max face-deviation-max)
-    (some? robotics-sim-verified?)                                        (assoc :extraction/robotics-sim-verified? robotics-sim-verified?)
-    (some? robotics-sim-record)                                             (assoc :extraction/robotics-sim-record (enc robotics-sim-record))
-    (some? extracted?)                                                        (assoc :extraction/extracted? extracted?)
-    (some? shipped?)                                                          (assoc :extraction/shipped? shipped?)
-    jurisdiction                                                                (assoc :extraction/jurisdiction jurisdiction)
-    status                                                                        (assoc :extraction/status status)
-    extraction-number                                                             (assoc :extraction/extraction-number extraction-number)
-    shipment-number                                                                 (assoc :extraction/shipment-number shipment-number)))
+    fragment-mass-kg                                                (assoc :extraction/fragment-mass-kg fragment-mass-kg)
+    bench-drop-height-m                                               (assoc :extraction/bench-drop-height-m bench-drop-height-m)
+    catch-bench-rated-height-m                                          (assoc :extraction/catch-bench-rated-height-m catch-bench-rated-height-m)
+    sim-settling-distance-m                                               (assoc :extraction/sim-settling-distance-m sim-settling-distance-m)
+    (some? sim-impact-energy-j)                                             (assoc :extraction/sim-impact-energy-j sim-impact-energy-j)
+    (some? sim-impact-velocity-mps)                                           (assoc :extraction/sim-impact-velocity-mps sim-impact-velocity-mps)
+    (some? robotics-sim-verified?)                                              (assoc :extraction/robotics-sim-verified? robotics-sim-verified?)
+    (some? robotics-sim-record)                                                   (assoc :extraction/robotics-sim-record (enc robotics-sim-record))
+    (some? extracted?)                                                              (assoc :extraction/extracted? extracted?)
+    (some? shipped?)                                                                  (assoc :extraction/shipped? shipped?)
+    jurisdiction                                                                        (assoc :extraction/jurisdiction jurisdiction)
+    status                                                                                (assoc :extraction/status status)
+    extraction-number                                                                       (assoc :extraction/extraction-number extraction-number)
+    shipment-number                                                                           (assoc :extraction/shipment-number shipment-number)))
 
 (def ^:private extraction-pull
   [:extraction/id :extraction/site :extraction/material-type :extraction/permit-id
    :extraction/permit-valid? :extraction/involves-blasting? :extraction/blast-clearance-confirmed?
    :extraction/quantity :extraction/royalty-rate :extraction/claimed-royalty
-   :extraction/face-deviation-actual :extraction/face-deviation-min :extraction/face-deviation-max
+   :extraction/fragment-mass-kg :extraction/bench-drop-height-m :extraction/catch-bench-rated-height-m
+   :extraction/sim-settling-distance-m :extraction/sim-impact-energy-j :extraction/sim-impact-velocity-mps
    :extraction/robotics-sim-verified? :extraction/robotics-sim-record
    :extraction/extracted? :extraction/shipped?
    :extraction/jurisdiction :extraction/status :extraction/extraction-number :extraction/shipment-number])
@@ -266,9 +305,12 @@
      :blast-clearance-confirmed? (boolean (:extraction/blast-clearance-confirmed? m))
      :quantity (:extraction/quantity m) :royalty-rate (:extraction/royalty-rate m)
      :claimed-royalty (:extraction/claimed-royalty m)
-     :face-deviation-actual (:extraction/face-deviation-actual m)
-     :face-deviation-min (:extraction/face-deviation-min m)
-     :face-deviation-max (:extraction/face-deviation-max m)
+     :fragment-mass-kg (:extraction/fragment-mass-kg m)
+     :bench-drop-height-m (:extraction/bench-drop-height-m m)
+     :catch-bench-rated-height-m (:extraction/catch-bench-rated-height-m m)
+     :sim-settling-distance-m (:extraction/sim-settling-distance-m m)
+     :sim-impact-energy-j (:extraction/sim-impact-energy-j m)
+     :sim-impact-velocity-mps (:extraction/sim-impact-velocity-mps m)
      :robotics-sim-verified? (boolean (:extraction/robotics-sim-verified? m))
      :robotics-sim-record (dec* (:extraction/robotics-sim-record m))
      :extracted? (boolean (:extraction/extracted? m)) :shipped? (boolean (:extraction/shipped? m))

@@ -6,6 +6,7 @@
   `underwriting.store-contract-test` for the same pattern on the
   sibling actor."
   (:require [clojure.test :refer [deftest is testing]]
+            [quarryops.robotics :as robotics]
             [quarryops.store :as store]))
 
 (defn- backends []
@@ -25,7 +26,17 @@
       (is (true? (:blast-clearance-confirmed? (store/extraction s "extraction-6"))))
       (is (false? (:robotics-sim-verified? (store/extraction s "extraction-1"))) "no robotics mission has run yet")
       (is (true? (:robotics-sim-verified? (store/extraction s "extraction-7"))) "seeded as already-on-file")
-      (is (= 0.30 (:face-deviation-actual (store/extraction s "extraction-7"))))
+      (is (= 4.0 (:bench-drop-height-m (store/extraction s "extraction-1"))))
+      (is (= 180.0 (:fragment-mass-kg (store/extraction s "extraction-1"))))
+      (is (= 10.0 (:catch-bench-rated-height-m (store/extraction s "extraction-1"))))
+      (is (number? (:sim-settling-distance-m (store/extraction s "extraction-1"))) "real physics-2d telemetry on file")
+      (is (number? (:sim-impact-energy-j (store/extraction s "extraction-1"))) "real physics-2d telemetry on file")
+      (is (not (robotics/simulation-out-of-tolerance? (store/extraction s "extraction-1")))
+          "extraction-1's real 180kg/4.0m bench-face settling simulation clears the real catch-bench tolerance band")
+      (is (= 14.0 (:bench-drop-height-m (store/extraction s "extraction-7")))
+          "extraction-7's loose block is deliberately surveyed above its own catch bench's rated height -- see quarryops.store/demo-data")
+      (is (robotics/simulation-out-of-tolerance? (store/extraction s "extraction-7"))
+          "extraction-7's real simulated settling/impact-energy genuinely exceeds the real catch-bench tolerance band")
       (is (false? (:extracted? (store/extraction s "extraction-1"))))
       (is (false? (:shipped? (store/extraction s "extraction-1"))))
       (is (= ["extraction-1" "extraction-2" "extraction-3" "extraction-4" "extraction-5" "extraction-6" "extraction-7"]

@@ -11,9 +11,17 @@
   (`:robotics-simulation-missing`, ADR-2607142800), a royalty mismatch
   (verified first), an invalid extraction permit, an unconfirmed
   blast-safety clearance on a blasting extraction, a robot mission
-  already on file whose own face-boundary-deviation reading fails an
-  INDEPENDENT recheck (`:robotics-simulation-out-of-tolerance`,
-  ADR-2607142800), a double extraction, and a double shipment.
+  already on file whose own REAL `physics-2d`-simulated bench-face
+  loose-block settling telemetry fails an INDEPENDENT recheck
+  (`:robotics-simulation-out-of-tolerance`, ADR-2607142800/
+  ADR-2607152000), a double extraction, and a double shipment.
+
+  `quarryops.robotics/simulate-quarry-face-verification` now actually
+  runs a real `physics-2d`-backed time-stepped free-fall/settling
+  simulation of a bench-face loose block (ADR-2607152000, generalizing
+  ADR-2607151600's automotive pilot to this vertical) -- see
+  `quarryops.robotics` for what is genuinely simulated vs. disclosed
+  simplification.
 
   Like `retailops`/4711's and `freightops`/4920's own new checks,
   this actor's `extraction-permit-invalid?`/`blast-safety-clearance-
@@ -117,7 +125,7 @@
     (println (exec-op actor "t14b" {:op :jurisdiction/assess :subject "extraction-7"} operator))
     (println (approve! actor "t14b"))
 
-    (println "== extraction/extract extraction-7 (robotics-sim on file, but face-boundary deviation 0.30 outside [-0.05,0.05] tolerance on independent recheck -> HARD hold) ==")
+    (println "== extraction/extract extraction-7 (robotics-sim on file, but a real re-run physics-2d free-fall/settling simulation shows this 340kg block's 14.0m survey height exceeding the catch bench's real 10.0m rated containment height on independent recheck -> HARD hold) ==")
     (println (exec-op actor "t14c" {:op :extraction/extract :subject "extraction-7"} operator))
 
     (println "== extraction/extract extraction-1 AGAIN (double-extraction -> HARD hold) ==")

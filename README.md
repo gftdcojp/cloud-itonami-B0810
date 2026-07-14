@@ -143,10 +143,35 @@ require human sign-off.
 bench-face/quarry-face verification mission (`kotoba.robotics`
 mission/action/telemetry-proof contracts) -- bench-face dimensional
 survey, core-sample quality assay, dust/particulate-emissions scan --
-before `:actuation/extract-material` is proposable. The Quarry
-Governor independently re-derives the extraction's own face-boundary-
-deviation tolerance from ground-truth fields, never trusting the
-mission's self-reported verdict alone.
+before `:actuation/extract-material` is proposable.
+
+**This is now a REAL time-stepped physics simulation, not a synthetic
+field comparison (ADR-2607152000, generalizing ADR-2607151600's
+automotive pilot to this vertical).** This repository takes a REAL
+git-coordinate dependency on
+[`kotoba-lang/physics-2d`](https://github.com/kotoba-lang/physics-2d)
+(pinned by SHA in `deps.edn`), and `quarryops.robotics/simulate-
+quarry-face-verification` actually calls it directly (no design-
+library sibling repo needed, unlike automotive): a bench-face loose
+block/fragment is modeled as an actual `physics-2d` rigid body (real
+gravity `[0 -9.81]`) that ACTUALLY free-falls tick-by-tick
+(`world-step`) toward a static catch-bench-floor body until it
+genuinely settles or a max-tick budget is reached. The Quarry Governor
+independently re-derives the extraction's own real simulated telemetry
+(`:sim-settling-distance-m`/`:sim-impact-energy-j`) against a real
+tolerance band anchored on this site's own recorded `:catch-bench-
+rated-height-m` design rating (grounded in Ritchie's (1963) empirical
+catch-bench-geometry criteria widely used in open-pit/quarry slope
+design), never trusting the mission's self-reported verdict alone.
+Honest scope: the physics is a 2D projection (vertical free-fall only,
+no lateral rollout distance modeled), and the fragment is a single
+cubic AABB block sized from its own recorded mass at a disclosed
+typical rock-density prior -- see `quarryops.robotics`'s namespace
+docstring for the full, disclosed derivation. This real-engine wiring
+is now live for both the automotive (isic-2910) and quarryops
+(isic-0810) verticals; the remaining cloud-itonami manufacturing
+actors touched by ADR-2607142800 remain on the symbolic robotics-
+simulation layer until a similar integration is built for each.
 
 ## Open business
 
@@ -185,7 +210,7 @@ at all (unlike `retailops`/4711's own `kotoba-lang/retail` and
 | `src/quarryops/registry.cljc` | Extraction/shipment draft records, plus `royalty-matches-claim?` -- an honest reapplication of the SAME ground-truth-recompute discipline every sibling actor's own cost/total-matching check establishes |
 | `src/quarryops/facts.cljc` | Per-jurisdiction mine-safety AND explosives/blast-safety catalog with an official spec-basis citation per entry, honest coverage reporting -- ALL FOUR seeded jurisdictions have a blast-safety sub-citation here |
 | `src/quarryops/quarryopsllm.cljc` | **QuarryOps-LLM** -- `mock-advisor` ‖ `llm-advisor`; intake/jurisdiction-assessment/robotics-simulation/extraction/shipment proposals |
-| `src/quarryops/robotics.cljc` | Robot bench-face/quarry-face verification mission (`kotoba.robotics` mission/action/telemetry-proof) + `face-boundary-deviation-out-of-range?` ground-truth check + `simulation-out-of-tolerance?` independent recheck for the governor (ADR-2607142800/ADR-2607150600) |
+| `src/quarryops/robotics.cljc` | Robot bench-face/quarry-face verification mission (`kotoba.robotics` mission/action/telemetry-proof) + a REAL `physics-2d`-backed time-stepped bench-face loose-block free-fall/settling simulation + `bench-face-settling-out-of-tolerance?` ground-truth check + `simulation-out-of-tolerance?` independent recheck for the governor (ADR-2607142800/ADR-2607150600/ADR-2607152000) |
 | `src/quarryops/governor.cljc` | **Quarry Governor** -- 6 HARD checks (spec-basis · evidence-incomplete · robotics-simulation missing/out-of-tolerance, NEW (ADR-2607150600) · royalty-mismatch · extraction-permit-invalid, FLAGSHIP NEW, the 76th unconditional-evaluation-discipline grounding · blast-safety-clearance-unconfirmed, CONDITIONAL, the 77th grounding) + 2 double-actuation guards + 1 soft (confidence/actuation gate) |
 | `src/quarryops/phase.cljc` | **Phase 0→3** -- read-only → assisted intake → assisted assess (+ robotics simulation) → supervised (extraction/shipment always human; extraction intake is the ONLY auto-eligible op, no direct capital risk) |
 | `src/quarryops/operation.cljc` | **OperationActor** -- langgraph StateGraph |
